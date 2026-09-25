@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>TAPE 32 · NFL 2026</title>
+  <meta name="theme-color" content="#0a0a0b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TAPE 32" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-512.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            tape: {
+              bg: '#0a0a0b',
+              card: '#141416',
+              card2: '#1c1c1f',
+              border: '#2a2a2e',
+              muted: '#8b8b93',
+              gold: '#e8b923',
+              green: '#22c55e',
+              red: '#ef4444'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { background: #0a0a0b; font-family: system-ui, -apple-system, sans-serif; }
+    .logo { width: 32px; height: 32px; object-fit: contain; }
+    .logo-lg { width: 48px; height: 48px; object-fit: contain; }
+    .chip { transition: all 0.15s; }
+    .chip.active { background: #e8b923; color: #0a0a0b; font-weight: 600; }
+    .sort-btn { cursor: pointer; user-select: none; }
+    .sort-arrow { font-size: 9px; opacity: 0.5; }
+    .sort-arrow.on { opacity: 1; color: #e8b923; }
+    .modal-bg { background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
+    .play-row.big { border-left: 3px solid #e8b923; background: rgba(232,185,35,0.06); }
+    select.period-select {
+      appearance: none;
+      background: #1c1c1f url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b8b93'%3E%3Cpath d='M3 4.5L6 8l3-3.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+      padding-right: 28px;
+    }
+    .bar-track { height: 8px; background: #2a2a2e; border-radius: 4px; overflow: hidden; }
+    .bar-fill-a { height: 100%; background: #e8b923; border-radius: 4px; transition: width 0.4s ease; }
+    .bar-fill-b { height: 100%; background: #3b82f6; border-radius: 4px; transition: width 0.4s ease; }
+  </style>
+</head>
+<body class="text-white min-h-screen pb-28">
+
+  <header class="sticky top-0 z-40 bg-tape-bg/95 backdrop-blur border-b border-tape-border">
+    <div class="px-4 pt-3 pb-2">
+      <div class="flex items-center justify-between gap-2">
+        <h1 class="text-2xl font-black tracking-tight">TAPE <span class="text-tape-gold">32</span></h1>
+        <button onclick="openCriteria()" class="text-[11px] text-tape-muted border border-tape-border rounded-full px-3 py-1.5 shrink-0">Critérios</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Period: compact select (alça) -->
+  <div class="px-4 py-3 flex items-center gap-3">
+    <div class="flex-1">
+      <label class="text-[10px] text-tape-muted uppercase tracking-wider block mb-1">Período</label>
+      <select id="period-select" onchange="setPeriod(this.value)" class="period-select w-full bg-tape-card2 border border-tape-border rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-tape-gold">
+        <option value="all" selected>Acumulado (temporada)</option>
+        <option value="1">Semana 1</option>
+        <option value="2">Semana 2</option>
+        <option value="3">Semana 3</option>
+        <option value="4">Semana 4</option>
+        <option value="5">Semana 5</option>
+        <option value="6">Semana 6</option>
+        <option value="7">Semana 7</option>
+        <option value="8">Semana 8</option>
+        <option value="9">Semana 9</option>
+        <option value="10">Semana 10</option>
+        <option value="11">Semana 11</option>
+        <option value="12">Semana 12</option>
+        <option value="13">Semana 13</option>
+        <option value="14">Semana 14</option>
+        <option value="15">Semana 15</option>
+        <option value="16">Semana 16</option>
+        <option value="17">Semana 17</option>
+        <option value="18">Semana 18</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Highlights -->
+  <div class="px-4 grid grid-cols-2 gap-2.5 mb-4">
+    <div class="bg-tape-card border border-tape-border rounded-2xl p-3.5">
+      <div class="text-[10px] text-tape-muted uppercase tracking-wider mb-1">Mais explosões</div>
+      <div class="font-bold text-[15px]" id="hl-exp-team">—</div>
+      <div class="text-[12px] text-tape-gold" id="hl-exp-val">—</div>
+    </div>
+    <div class="bg-tape-card border border-tape-border rounded-2xl p-3.5">
+      <div class="text-[10px] text-tape-muted uppercase tracking-wider mb-1">Defesa mais vazada</div>
+      <div class="font-bold text-[15px]" id="hl-def-team">—</div>
+      <div class="text-[12px] text-red-400" id="hl-def-val">—</div>
+    </div>
+    <div class="bg-tape-card border border-tape-border rounded-2xl p-3.5">
+      <div class="text-[10px] text-tape-muted uppercase tracking-wider mb-1">Melhor saldo TO</div>
+      <div class="font-bold text-[15px]" id="hl-to-team">—</div>
+      <div class="text-[12px] text-green-400" id="hl-to-val">—</div>
+    </div>
+    <div class="bg-tape-card border border-tape-border rounded-2xl p-3.5">
+      <div class="text-[10px] text-tape-muted uppercase tracking-wider mb-1">Melhor Nota Tape</div>
+      <div class="font-bold text-[15px]" id="hl-score-team">—</div>
+      <div class="text-[12px] text-tape-gold" id="hl-score-val">—</div>
+    </div>
+  </div>
+
+  <!-- Main tabs including Matchup -->
+  <div class="px-4 flex gap-1 overflow-x-auto mb-3">
+    <button onclick="setView('geral')" id="view-geral" class="chip view-chip active text-[12px] px-3.5 py-1.5 rounded-full border border-tape-border shrink-0">Visão geral</button>
+    <button onclick="setView('explosoes')" id="view-explosoes" class="chip view-chip text-[12px] px-3.5 py-1.5 rounded-full border border-tape-border text-tape-muted shrink-0">Explosões</button>
+    <button onclick="setView('turnovers')" id="view-turnovers" class="chip view-chip text-[12px] px-3.5 py-1.5 rounded-full border border-tape-border text-tape-muted shrink-0">Turnovers</button>
+    <button onclick="setView('flags')" id="view-flags" class="chip view-chip text-[12px] px-3.5 py-1.5 rounded-full border border-tape-border text-tape-muted shrink-0">Flags 3º/4º</button>
+    <button onclick="setView('matchup')" id="view-matchup" class="chip view-chip text-[12px] px-3.5 py-1.5 rounded-full border border-tape-border text-tape-muted shrink-0">Matchup</button>
+  </div>
+
+  <!-- Filters (hidden on matchup view) -->
+  <div id="filters-block" class="px-4 space-y-2 mb-3">
+    <div class="flex gap-1.5 overflow-x-auto">
+      <button onclick="setConf('all')" id="conf-all" class="chip conf-chip active text-[11px] px-3 py-1 rounded-full border border-tape-border shrink-0">Liga</button>
+      <button onclick="setConf('AFC')" id="conf-AFC" class="chip conf-chip text-[11px] px-3 py-1 rounded-full border border-tape-border text-tape-muted shrink-0">AFC</button>
+      <button onclick="setConf('NFC')" id="conf-NFC" class="chip conf-chip text-[11px] px-3 py-1 rounded-full border border-tape-border text-tape-muted shrink-0">NFC</button>
+    </div>
+    <div class="flex gap-1.5 overflow-x-auto">
+      <button onclick="setDiv('all')" id="div-all" class="chip div-chip active text-[11px] px-3 py-1 rounded-full border border-tape-border shrink-0">Divisões</button>
+      <button onclick="setDiv('East')" id="div-East" class="chip div-chip text-[11px] px-3 py-1 rounded-full border border-tape-border text-tape-muted shrink-0">Leste</button>
+      <button onclick="setDiv('North')" id="div-North" class="chip div-chip text-[11px] px-3 py-1 rounded-full border border-tape-border text-tape-muted shrink-0">Norte</button>
+      <button onclick="setDiv('South')" id="div-South" class="chip div-chip text-[11px] px-3 py-1 rounded-full border border-tape-border text-tape-muted shrink-0">Sul</button>
+      <button onclick="setDiv('West')" id="div-West" class="chip div-chip text-[11px] px-3 py-1 rounded-full border border-tape-border text-tape-muted shrink-0">Oeste</button>
+    </div>
+    <input id="search" type="text" placeholder="Buscar time" oninput="renderList()"
+      class="w-full bg-tape-card border border-tape-border rounded-xl px-3.5 py-2.5 text-sm placeholder:text-tape-muted focus:outline-none focus:border-tape-gold" />
+  </div>
+
+  <!-- Sort header (hidden on matchup) -->
+  <div id="sort-header" class="px-4 mb-2">
+    <div class="flex items-center gap-1.5 text-[10px] text-tape-muted uppercase tracking-wider px-1">
+      <span class="w-5">#</span>
+      <span class="flex-1">Time</span>
+      <button class="sort-btn flex items-center gap-0.5 min-w-[32px] justify-end" onclick="toggleSort('exp')">+20 <span id="arrow-exp" class="sort-arrow">↕</span></button>
+      <button class="sort-btn flex items-center gap-0.5 min-w-[32px] justify-end" onclick="toggleSort('perm')">PERM <span id="arrow-perm" class="sort-arrow">↕</span></button>
+      <button class="sort-btn flex items-center gap-0.5 min-w-[36px] justify-end" onclick="toggleSort('saldo')">SALDO <span id="arrow-saldo" class="sort-arrow">↕</span></button>
+      <button class="sort-btn flex items-center gap-0.5 min-w-[32px] justify-end" onclick="toggleSort('flags')">FLAG <span id="arrow-flags" class="sort-arrow">↕</span></button>
+      <button class="sort-btn flex items-center gap-0.5 min-w-[36px] justify-end" onclick="toggleSort('score')">NOTA <span id="arrow-score" class="sort-arrow on">↓</span></button>
+    </div>
+  </div>
+
+  <!-- Rank list -->
+  <div id="rank-list" class="px-4 space-y-2"></div>
+
+  <!-- Matchup panel (full view) -->
+  <div id="matchup-panel" class="px-4 hidden">
+    <div class="bg-tape-card border border-tape-border rounded-2xl p-4 mb-4">
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="text-[11px] text-tape-muted block mb-1.5">Time A</label>
+          <select id="match-a" onchange="runMatchup()" class="w-full bg-tape-card2 border border-tape-border rounded-xl px-3 py-2.5 text-sm"></select>
+        </div>
+        <div>
+          <label class="text-[11px] text-tape-muted block mb-1.5">Time B</label>
+          <select id="match-b" onchange="runMatchup()" class="w-full bg-tape-card2 border border-tape-border rounded-xl px-3 py-2.5 text-sm"></select>
+        </div>
+      </div>
+      <div id="matchup-heads" class="flex items-center justify-between mb-5 px-2">
+        <div class="flex flex-col items-center gap-1 w-24">
+          <img id="mh-logo-a" class="logo-lg" src="" alt="">
+          <div id="mh-name-a" class="text-[13px] font-bold text-center"></div>
+          <div id="mh-score-a" class="text-tape-gold text-lg font-black"></div>
+        </div>
+        <div class="text-tape-muted text-sm font-medium">vs</div>
+        <div class="flex flex-col items-center gap-1 w-24">
+          <img id="mh-logo-b" class="logo-lg" src="" alt="">
+          <div id="mh-name-b" class="text-[13px] font-bold text-center"></div>
+          <div id="mh-score-b" class="text-blue-400 text-lg font-black"></div>
+        </div>
+      </div>
+
+      <!-- Bar charts -->
+      <div id="matchup-bars" class="space-y-4"></div>
+
+      <!-- Text summary -->
+      <div id="matchup-text" class="mt-5 pt-4 border-t border-tape-border space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- Team detail modal -->
+  <div id="modal-team" class="fixed inset-0 z-50 hidden modal-bg flex items-end sm:items-center justify-center p-3">
+    <div class="bg-tape-card border border-tape-border rounded-2xl w-full max-w-md max-h-[88vh] overflow-y-auto">
+      <div class="sticky top-0 bg-tape-card px-4 py-3 border-b border-tape-border flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <img id="td-logo" class="logo" src="" alt="">
+          <div>
+            <div id="td-name" class="font-bold"></div>
+            <div id="td-meta" class="text-[11px] text-tape-muted"></div>
+          </div>
+        </div>
+        <button onclick="closeTeam()" class="text-tape-muted text-xl px-2">×</button>
+      </div>
+      <div class="px-4 py-3">
+        <div class="grid grid-cols-4 gap-2 mb-3 text-center">
+          <div class="bg-tape-card2 rounded-xl py-2"><div class="text-[10px] text-tape-muted">+20</div><div id="td-exp" class="font-bold text-tape-gold"></div></div>
+          <div class="bg-tape-card2 rounded-xl py-2"><div class="text-[10px] text-tape-muted">PERM</div><div id="td-perm" class="font-bold"></div></div>
+          <div class="bg-tape-card2 rounded-xl py-2"><div class="text-[10px] text-tape-muted">SALDO</div><div id="td-saldo" class="font-bold"></div></div>
+          <div class="bg-tape-card2 rounded-xl py-2"><div class="text-[10px] text-tape-muted">FLAGS</div><div id="td-flags" class="font-bold"></div></div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-4 text-center text-[12px]">
+          <div class="bg-tape-card2 rounded-xl py-2"><div class="text-[10px] text-tape-muted">Margem</div><div id="td-margin" class="font-semibold"></div></div>
+          <div class="bg-tape-card2 rounded-xl py-2"><div class="text-[10px] text-tape-muted">SOS</div><div id="td-sos" class="font-semibold"></div></div>
+          <div class="bg-tape-card2 rounded-xl py-2"><div class="text-[10px] text-tape-muted">Recorde</div><div id="td-record" class="font-semibold"></div></div>
+        </div>
+        <div class="text-[12px] font-semibold mb-2 text-tape-gold">Exemplos de jogadas 20+</div>
+        <div id="td-plays" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Criteria modal -->
+  <div id="modal-criteria" class="fixed inset-0 z-50 hidden modal-bg flex items-end sm:items-center justify-center p-4">
+    <div class="bg-tape-card border border-tape-border rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
+      <div class="sticky top-0 bg-tape-card px-5 py-4 border-b border-tape-border flex justify-between items-center">
+        <h2 class="font-bold text-lg">Critério & Nota Tape</h2>
+        <button onclick="closeCriteria()" class="text-tape-muted text-xl">×</button>
+      </div>
+      <div class="px-5 py-4 text-[13px] text-gray-300 space-y-3 leading-relaxed">
+        <div class="bg-amber-950/40 border border-amber-800/40 rounded-xl p-3 text-[12px] text-amber-200">
+          Números de recorde, margem e takeaways alinhados a fontes públicas (até Sem. 2). Contagens de +20 e flags em 3º/4º ainda aproximadas — PBP completo via nflverse em breve.
+        </div>
+        <div class="text-[12px] space-y-1.5 bg-tape-card2 rounded-xl p-3">
+          <div class="flex justify-between"><span>Explosões ofensivas</span><span class="text-tape-gold">18%</span></div>
+          <div class="flex justify-between"><span>Explosões permitidas</span><span class="text-tape-gold">16%</span></div>
+          <div class="flex justify-between"><span>Saldo de turnovers</span><span class="text-tape-gold">18%</span></div>
+          <div class="flex justify-between"><span>Flags em 3º/4º</span><span class="text-tape-gold">10%</span></div>
+          <div class="flex justify-between"><span>Margem de pontos</span><span class="text-tape-gold">18%</span></div>
+          <div class="flex justify-between"><span>SOS (força adversário)</span><span class="text-tape-gold">12%</span></div>
+          <div class="flex justify-between"><span>Recorde (W-L %)</span><span class="text-tape-gold">8%</span></div>
+        </div>
+        <p class="text-[12px]">Vitória apertada vs time forte pesa mais que goleada vs time fraco.</p>
+        <p class="text-[11px] text-tape-muted pt-2 border-t border-tape-border">Período em seletor compacto. Matchup com barras comparativas.</p>
+      </div>
+      <div class="px-5 pb-5">
+        <button onclick="closeCriteria()" class="w-full py-3 rounded-xl border border-tape-border text-sm font-medium">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LOGO = {ARI:"ari",ATL:"atl",BAL:"bal",BUF:"buf",CAR:"car",CHI:"chi",CIN:"cin",CLE:"cle",DAL:"dal",DEN:"den",DET:"det",GB:"gb",HOU:"hou",IND:"ind",JAX:"jax",KC:"kc",LV:"lv",LAC:"lac",LAR:"lar",MIA:"mia",MIN:"min",NE:"ne",NO:"no",NYG:"nyg",NYJ:"nyj",PHI:"phi",PIT:"pit",SF:"sf",SEA:"sea",TB:"tb",TEN:"ten",WAS:"wsh"};
+    function logo(a){ return "https://a.espncdn.com/i/teamlogos/nfl/500/"+(LOGO[a]||a.toLowerCase())+".png"; }
+
+    let base = [
+      {abbr:"BUF",name:"Bills",conf:"AFC",div:"East", exp:14,perm:9, saldo:2, flags:2, margin:15, wins:2, losses:0, sosRaw:48},
+      {abbr:"SF",name:"49ers",conf:"NFC",div:"West", exp:8,perm:5, saldo:3, flags:1, margin:21, wins:2, losses:0, sosRaw:44},
+      {abbr:"SEA",name:"Seahawks",conf:"NFC",div:"West", exp:7,perm:2, saldo:3, flags:1, margin:14, wins:2, losses:0, sosRaw:46},
+      {abbr:"KC",name:"Chiefs",conf:"AFC",div:"West", exp:10,perm:4, saldo:2, flags:2, margin:12, wins:2, losses:0, sosRaw:50},
+      {abbr:"PHI",name:"Eagles",conf:"NFC",div:"East", exp:9,perm:6, saldo:1, flags:2, margin:8, wins:2, losses:0, sosRaw:49},
+      {abbr:"MIN",name:"Vikings",conf:"NFC",div:"North", exp:6,perm:7, saldo:3, flags:2, margin:12, wins:2, losses:0, sosRaw:47},
+      {abbr:"CIN",name:"Bengals",conf:"AFC",div:"North", exp:7,perm:7, saldo:4, flags:2, margin:10, wins:2, losses:0, sosRaw:51},
+      {abbr:"LV",name:"Raiders",conf:"AFC",div:"West", exp:6,perm:6, saldo:4, flags:2, margin:13, wins:2, losses:0, sosRaw:48},
+      {abbr:"CAR",name:"Panthers",conf:"NFC",div:"South", exp:11,perm:8, saldo:5, flags:1, margin:4, wins:1, losses:1, sosRaw:52},
+      {abbr:"BAL",name:"Ravens",conf:"AFC",div:"North", exp:9,perm:7, saldo:1, flags:1, margin:6, wins:1, losses:1, sosRaw:55},
+      {abbr:"NO",name:"Saints",conf:"NFC",div:"South", exp:10,perm:5, saldo:0, flags:0, margin:3, wins:1, losses:1, sosRaw:54},
+      {abbr:"DET",name:"Lions",conf:"NFC",div:"North", exp:11,perm:12, saldo:2, flags:1, margin:-5, wins:1, losses:1, sosRaw:58},
+      {abbr:"GB",name:"Packers",conf:"NFC",div:"North", exp:8,perm:6, saldo:-1, flags:5, margin:-7, wins:1, losses:1, sosRaw:53},
+      {abbr:"PIT",name:"Steelers",conf:"AFC",div:"North", exp:4,perm:5, saldo:3, flags:2, margin:-5, wins:1, losses:1, sosRaw:56},
+      {abbr:"NE",name:"Patriots",conf:"AFC",div:"East", exp:5,perm:3, saldo:0, flags:2, margin:7, wins:1, losses:1, sosRaw:50},
+      {abbr:"LAR",name:"Rams",conf:"NFC",div:"West", exp:9,perm:3, saldo:0, flags:1, margin:1, wins:1, losses:1, sosRaw:52},
+      {abbr:"DEN",name:"Broncos",conf:"AFC",div:"West", exp:5,perm:6, saldo:1, flags:1, margin:-7, wins:1, losses:1, sosRaw:49},
+      {abbr:"DAL",name:"Cowboys",conf:"NFC",div:"East", exp:6,perm:8, saldo:1, flags:3, margin:4, wins:1, losses:1, sosRaw:51},
+      {abbr:"JAX",name:"Jaguars",conf:"AFC",div:"South", exp:8,perm:9, saldo:2, flags:2, margin:8, wins:1, losses:1, sosRaw:47},
+      {abbr:"NYG",name:"Giants",conf:"NFC",div:"East", exp:3,perm:10, saldo:1, flags:3, margin:-7, wins:1, losses:1, sosRaw:55},
+      {abbr:"CLE",name:"Browns",conf:"AFC",div:"North", exp:5,perm:8, saldo:0, flags:2, margin:-10, wins:1, losses:1, sosRaw:54},
+      {abbr:"CHI",name:"Bears",conf:"NFC",div:"North", exp:7,perm:9, saldo:1, flags:2, margin:-6, wins:1, losses:1, sosRaw:53},
+      {abbr:"ARI",name:"Cardinals",conf:"NFC",div:"West", exp:3,perm:7, saldo:1, flags:2, margin:-12, wins:0, losses:2, sosRaw:50},
+      {abbr:"WAS",name:"Commanders",conf:"NFC",div:"East", exp:6,perm:10, saldo:-1, flags:3, margin:-14, wins:0, losses:2, sosRaw:52},
+      {abbr:"HOU",name:"Texans",conf:"AFC",div:"South", exp:8,perm:11, saldo:0, flags:3, margin:-10, wins:0, losses:2, sosRaw:56},
+      {abbr:"TB",name:"Buccaneers",conf:"NFC",div:"South", exp:7,perm:8, saldo:-2, flags:2, margin:-5, wins:0, losses:2, sosRaw:51},
+      {abbr:"LAC",name:"Chargers",conf:"AFC",div:"West", exp:4,perm:8, saldo:-3, flags:3, margin:-12, wins:0, losses:2, sosRaw:53},
+      {abbr:"MIA",name:"Dolphins",conf:"AFC",div:"East", exp:7,perm:10, saldo:-2, flags:3, margin:-18, wins:0, losses:2, sosRaw:55},
+      {abbr:"IND",name:"Colts",conf:"AFC",div:"South", exp:7,perm:13, saldo:-1, flags:3, margin:-15, wins:0, losses:2, sosRaw:57},
+      {abbr:"ATL",name:"Falcons",conf:"NFC",div:"South", exp:4,perm:9, saldo:-4, flags:3, margin:-19, wins:0, losses:2, sosRaw:54},
+      {abbr:"NYJ",name:"Jets",conf:"AFC",div:"East", exp:5,perm:5, saldo:0, flags:4, margin:-3, wins:1, losses:1, sosRaw:48},
+      {abbr:"TEN",name:"Titans",conf:"AFC",div:"South", exp:5,perm:8, saldo:1, flags:2, margin:-9, wins:0, losses:2, sosRaw:50}
+    ];
+
+    let samplePlays = {
+      BUF: [{clock:"12:41", qtr:"Q1", down:"1st & 10 @ BUF 28", desc:"J.Allen pass deep right to K.Shakir for 34 yards.", yds:34}],
+      SF: [{clock:"15:00", qtr:"Q1", down:"1st & 10 @ SF 35", desc:"B.Purdy pass deep middle to G.Kittle for 40 yards.", yds:40}],
+      DET: [{clock:"11:05", qtr:"Q1", down:"1st & 10 @ DET 33", desc:"J.Goff pass deep left to A.St. Brown for 31 yards.", yds:31}],
+      KC: [{clock:"08:33", qtr:"Q1", down:"1st & 10 @ KC 25", desc:"P.Mahomes pass deep right to R.Rice for 29 yards.", yds:29}],
+      CAR: [{clock:"10:17", qtr:"Q2", down:"1st & 10 @ CAR 30", desc:"B.Young pass deep middle to X.Legette for 27 yards.", yds:27}]
+    };
+
+    function pct(arr, val, higherBetter) {
+      const sorted = arr.slice().sort((a,b)=>a-b);
+      const n = sorted.length;
+      if (n <= 1) return 50;
+      let rank = higherBetter ? sorted.filter(x => x < val).length : sorted.filter(x => x > val).length;
+      return Math.round((rank / (n - 1)) * 100);
+    }
+
+    function computeScores(data) {
+      const exps = data.map(t => t.exp), perms = data.map(t => t.perm), saldos = data.map(t => t.saldo);
+      const flags = data.map(t => t.flags), margins = data.map(t => t.margin), sosRaws = data.map(t => t.sosRaw);
+      return data.map(t => {
+        const pExp = pct(exps, t.exp, true);
+        const pPerm = pct(perms, t.perm, false);
+        const pSaldo = pct(saldos, t.saldo, true);
+        const pFlags = pct(flags, t.flags, false);
+        const pMargin = pct(margins, t.margin, true);
+        const pSos = pct(sosRaws, t.sosRaw, true);
+        const winPct = t.wins + t.losses > 0 ? t.wins / (t.wins + t.losses) : 0;
+        const pRecord = Math.round(winPct * 100);
+        const score = Math.round(pExp*0.18 + pPerm*0.16 + pSaldo*0.18 + pFlags*0.10 + pMargin*0.18 + pSos*0.12 + pRecord*0.08);
+        return Object.assign({}, t, { score, winPct, pExp, pPerm, pSaldo, pFlags, pMargin, pSos, pRecord });
+      });
+    }
+
+    function dataFor(period) {
+      let d = base.map(t => Object.assign({}, t));
+      if (period !== "all") {
+        const f = Math.max(0.25, 0.6 - (parseInt(period,10)-1)*0.02);
+        d = d.map(t => ({
+          ...t,
+          exp: Math.max(0, Math.round(t.exp * f)),
+          perm: Math.max(0, Math.round(t.perm * f)),
+          saldo: Math.round(t.saldo * f),
+          flags: Math.max(0, Math.round(t.flags * f)),
+          margin: Math.round(t.margin * f)
+        }));
+      }
+      return computeScores(d);
+    }
+
+    let period = "all", conf = "all", div = "all", view = "geral";
+    let sortKey = "score", sortDir = "desc";
+    let currentData = dataFor("all");
+
+    function setPeriod(p) {
+      period = p;
+      currentData = dataFor(p);
+      renderAll();
+      if (view === "matchup") runMatchup();
+    }
+    function setConf(c) {
+      conf = c;
+      document.querySelectorAll(".conf-chip").forEach(b => b.classList.remove("active"));
+      document.getElementById("conf-" + c).classList.add("active");
+      renderList();
+    }
+    function setDiv(d) {
+      div = d;
+      document.querySelectorAll(".div-chip").forEach(b => b.classList.remove("active"));
+      document.getElementById("div-" + d).classList.add("active");
+      renderList();
+    }
+    function setView(v) {
+      view = v;
+      document.querySelectorAll(".view-chip").forEach(b => b.classList.remove("active"));
+      document.getElementById("view-" + v).classList.add("active");
+
+      const isMatch = v === "matchup";
+      document.getElementById("filters-block").classList.toggle("hidden", isMatch);
+      document.getElementById("sort-header").classList.toggle("hidden", isMatch);
+      document.getElementById("rank-list").classList.toggle("hidden", isMatch);
+      document.getElementById("matchup-panel").classList.toggle("hidden", !isMatch);
+
+      if (!isMatch) {
+        if (v === "explosoes") { sortKey = "exp"; sortDir = "desc"; }
+        else if (v === "turnovers") { sortKey = "saldo"; sortDir = "desc"; }
+        else if (v === "flags") { sortKey = "flags"; sortDir = "desc"; }
+        else { sortKey = "score"; sortDir = "desc"; }
+        updateArrows();
+        renderList();
+      } else {
+        fillMatchSelects();
+        runMatchup();
+      }
+    }
+    function toggleSort(key) {
+      if (sortKey === key) sortDir = sortDir === "desc" ? "asc" : "desc";
+      else { sortKey = key; sortDir = "desc"; }
+      updateArrows();
+      renderList();
+    }
+    function updateArrows() {
+      ["exp","perm","saldo","flags","score"].forEach(k => {
+        const el = document.getElementById("arrow-" + k);
+        if (!el) return;
+        if (k === sortKey) { el.textContent = sortDir === "desc" ? "↓" : "↑"; el.classList.add("on"); }
+        else { el.textContent = "↕"; el.classList.remove("on"); }
+      });
+    }
+    function filtered() {
+      let list = currentData.slice();
+      if (conf !== "all") list = list.filter(t => t.conf === conf);
+      if (div !== "all") list = list.filter(t => t.div === div);
+      const q = (document.getElementById("search").value || "").toLowerCase();
+      if (q) list = list.filter(t => t.abbr.toLowerCase().includes(q) || t.name.toLowerCase().includes(q));
+      return list;
+    }
+    function sorted(list) {
+      return list.sort((a,b) => sortDir === "desc" ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]);
+    }
+
+    function renderHighlights() {
+      const d = currentData;
+      const topExp = d.slice().sort((a,b)=>b.exp-a.exp)[0];
+      const topDef = d.slice().sort((a,b)=>b.perm-a.perm)[0];
+      const topTO = d.slice().sort((a,b)=>b.saldo-a.saldo)[0];
+      const topScore = d.slice().sort((a,b)=>b.score-a.score)[0];
+      document.getElementById("hl-exp-team").textContent = topExp.name;
+      document.getElementById("hl-exp-val").textContent = topExp.exp + " jogadas de 20+";
+      document.getElementById("hl-def-team").textContent = topDef.name;
+      document.getElementById("hl-def-val").textContent = topDef.perm + " 20+ permitidas";
+      document.getElementById("hl-to-team").textContent = topTO.name;
+      document.getElementById("hl-to-val").textContent = (topTO.saldo>0?"+":"") + topTO.saldo;
+      document.getElementById("hl-score-team").textContent = topScore.name;
+      document.getElementById("hl-score-val").textContent = "Nota " + topScore.score;
+    }
+
+    function renderList() {
+      const list = sorted(filtered());
+      document.getElementById("rank-list").innerHTML = list.map((t,i) => `
+        <div class="bg-tape-card border border-tape-border rounded-2xl px-3 py-3 flex items-center gap-2 active:bg-tape-card2" onclick="openTeam('${t.abbr}')">
+          <div class="text-[12px] text-tape-muted font-medium w-5">${String(i+1).padStart(2,"0")}</div>
+          <img src="${logo(t.abbr)}" class="logo shrink-0" onerror="this.style.opacity=0.3" alt="">
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-[13px] leading-tight truncate">${t.name}</div>
+            <div class="text-[10px] text-tape-muted">${t.abbr} · ${t.wins}-${t.losses}</div>
+          </div>
+          <div class="text-[12px] tabular-nums text-right w-8 text-tape-gold font-medium">${t.exp}</div>
+          <div class="text-[12px] tabular-nums text-right w-8 text-tape-muted">${t.perm}</div>
+          <div class="text-[12px] tabular-nums text-right w-9 ${t.saldo>0?'text-green-400':t.saldo<0?'text-red-400':'text-tape-muted'}">${t.saldo>0?'+':''}${t.saldo}</div>
+          <div class="text-[12px] tabular-nums text-right w-7 text-tape-muted">${t.flags}</div>
+          <div class="text-right w-9"><div class="text-[14px] font-bold text-tape-gold">${t.score}</div></div>
+        </div>`).join("");
+    }
+
+    function renderAll() {
+      renderHighlights();
+      updateArrows();
+      if (view !== "matchup") renderList();
+      fillMatchSelects();
+    }
+
+    function openTeam(abbr) {
+      const t = currentData.find(x => x.abbr === abbr);
+      if (!t) return;
+      document.getElementById("td-logo").src = logo(t.abbr);
+      document.getElementById("td-name").textContent = t.name;
+      document.getElementById("td-meta").textContent = t.abbr + " · Nota " + t.score;
+      document.getElementById("td-exp").textContent = t.exp;
+      document.getElementById("td-perm").textContent = t.perm;
+      document.getElementById("td-saldo").textContent = (t.saldo>0?"+":"") + t.saldo;
+      document.getElementById("td-flags").textContent = t.flags;
+      document.getElementById("td-margin").textContent = (t.margin>0?"+":"") + t.margin;
+      document.getElementById("td-sos").textContent = t.sosRaw;
+      document.getElementById("td-record").textContent = t.wins + "-" + t.losses;
+      const plays = samplePlays[abbr] || [{clock:"--:--", qtr:"—", down:"Exemplo", desc:"No PBP real cada explosão aparece com relógio.", yds:20}];
+      document.getElementById("td-plays").innerHTML = plays.map(p => `
+        <div class="play-row big rounded-xl px-3 py-2.5 border border-tape-border">
+          <div class="flex items-center gap-2 text-[11px] text-tape-muted mb-1">
+            <span class="font-mono text-tape-gold">${p.clock}</span> <span>${p.qtr}</span>
+            <span class="text-white/70">${p.down}</span>
+            <span class="ml-auto text-tape-gold font-semibold">+${p.yds}</span>
+          </div>
+          <div class="text-[12px] leading-snug text-gray-200">${p.desc}</div>
+        </div>`).join("");
+      document.getElementById("modal-team").classList.remove("hidden");
+    }
+    function closeTeam(){ document.getElementById("modal-team").classList.add("hidden"); }
+    function openCriteria(){ document.getElementById("modal-criteria").classList.remove("hidden"); }
+    function closeCriteria(){ document.getElementById("modal-criteria").classList.add("hidden"); }
+
+    function fillMatchSelects() {
+      const opts = currentData.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(t => `<option value="${t.abbr}">${t.name}</option>`).join("");
+      const sa = document.getElementById("match-a"), sb = document.getElementById("match-b");
+      const prevA = sa.value, prevB = sb.value;
+      sa.innerHTML = opts; sb.innerHTML = opts;
+      if (prevA) sa.value = prevA; else sa.selectedIndex = 0;
+      if (prevB) sb.value = prevB; else sb.selectedIndex = Math.min(1, sb.options.length-1);
+    }
+
+    function barRow(label, valA, valB, higherBetter) {
+      const max = Math.max(Math.abs(valA), Math.abs(valB), 1);
+      const wA = Math.round((Math.abs(valA) / max) * 100);
+      const wB = Math.round((Math.abs(valB) / max) * 100);
+      const betterA = higherBetter ? valA >= valB : valA <= valB;
+      return `
+        <div>
+          <div class="flex justify-between text-[11px] mb-1">
+            <span class="${betterA ? 'text-tape-gold font-semibold' : 'text-tape-muted'}">${valA}</span>
+            <span class="text-tape-muted">${label}</span>
+            <span class="${!betterA ? 'text-blue-400 font-semibold' : 'text-tape-muted'}">${valB}</span>
+          </div>
+          <div class="flex gap-1 items-center">
+            <div class="flex-1 flex justify-end">
+              <div class="bar-track w-full max-w-[140px]"><div class="bar-fill-a ml-auto" style="width:${wA}%"></div></div>
+            </div>
+            <div class="flex-1">
+              <div class="bar-track w-full max-w-[140px]"><div class="bar-fill-b" style="width:${wB}%"></div></div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function runMatchup() {
+      const aAbbr = document.getElementById("match-a").value;
+      const bAbbr = document.getElementById("match-b").value;
+      if (!aAbbr || !bAbbr || aAbbr === bAbbr) {
+        document.getElementById("matchup-bars").innerHTML = `<p class="text-[12px] text-tape-muted text-center py-4">Selecione dois times diferentes</p>`;
+        document.getElementById("matchup-text").innerHTML = "";
+        return;
+      }
+      const a = currentData.find(t => t.abbr === aAbbr);
+      const b = currentData.find(t => t.abbr === bAbbr);
+      if (!a || !b) return;
+
+      document.getElementById("mh-logo-a").src = logo(a.abbr);
+      document.getElementById("mh-name-a").textContent = a.name;
+      document.getElementById("mh-score-a").textContent = a.score;
+      document.getElementById("mh-logo-b").src = logo(b.abbr);
+      document.getElementById("mh-name-b").textContent = b.name;
+      document.getElementById("mh-score-b").textContent = b.score;
+
+      document.getElementById("matchup-bars").innerHTML = [
+        barRow("Explosões +20", a.exp, b.exp, true),
+        barRow("Permitidas", a.perm, b.perm, false),
+        barRow("Saldo TO", a.saldo, b.saldo, true),
+        barRow("Flags 3º/4º", a.flags, b.flags, false),
+        barRow("Margem pts", a.margin, b.margin, true),
+        barRow("SOS", a.sosRaw, b.sosRaw, true),
+        barRow("Nota Tape", a.score, b.score, true)
+      ].join("");
+
+      const posA = [], negA = [], posB = [], negB = [];
+      if (a.exp > b.exp + 2) posA.push(`Mais explosões (${a.exp} vs ${b.exp})`);
+      else if (b.exp > a.exp + 2) posB.push(`Mais explosões (${b.exp} vs ${a.exp})`);
+      if (a.perm < b.perm - 2) posA.push(`Defesa mais sólida vs 20+`);
+      else if (b.perm < a.perm - 2) posB.push(`Defesa mais sólida vs 20+`);
+      if (a.perm > b.perm + 3) negA.push(`Defesa vazada (${a.perm} permitidas)`);
+      if (b.perm > a.perm + 3) negB.push(`Defesa vazada (${b.perm} permitidas)`);
+      if (a.saldo > b.saldo + 1) posA.push(`Melhor saldo TO`);
+      else if (b.saldo > a.saldo + 1) posB.push(`Melhor saldo TO`);
+      if (a.margin > b.margin + 5) posA.push(`Melhor margem de pontos`);
+      else if (b.margin > a.margin + 5) posB.push(`Melhor margem de pontos`);
+      if (a.sosRaw > b.sosRaw + 5) posA.push(`SOS mais difícil`);
+      else if (b.sosRaw > a.sosRaw + 5) posB.push(`SOS mais difícil`);
+      if (a.flags > b.flags + 1) negA.push(`Mais flags em money down`);
+      if (b.flags > a.flags + 1) negB.push(`Mais flags em money down`);
+      if (a.score > b.score + 5) posA.push(`Nota Tape superior`);
+      else if (b.score > a.score + 5) posB.push(`Nota Tape superior`);
+
+      function block(title, items, color) {
+        const body = items.length ? items.map(i => `<div class="text-[12px] flex gap-1.5"><span class="${color}">•</span>${i}</div>`).join("") : `<div class="text-[12px] text-tape-muted">—</div>`;
+        return `<div><div class="text-[10px] uppercase tracking-wider ${color} mb-1">${title}</div>${body}</div>`;
+      }
+
+      document.getElementById("matchup-text").innerHTML = `
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="font-semibold text-[13px] mb-2 text-tape-gold">${a.name}</div>
+            ${block("Positivo", posA, "text-green-400")}
+            <div class="mt-2">${block("Negativo", negA, "text-red-400")}</div>
+          </div>
+          <div>
+            <div class="font-semibold text-[13px] mb-2 text-blue-400">${b.name}</div>
+            ${block("Positivo", posB, "text-green-400")}
+            <div class="mt-2">${block("Negativo", negB, "text-red-400")}</div>
+          </div>
+        </div>`;
+    }
+
+    // --- Carrega data/season.json se existir; senão usa base embutida ---
+    async function loadSeasonData() {
+      try {
+        const res = await fetch("data/season.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const payload = await res.json();
+        if (!payload.teams || !payload.teams.length) throw new Error("teams vazio");
+        // Mapeia schema → formato interno do app
+        const mapped = payload.teams.map(t => ({
+          abbr: t.abbr,
+          name: t.name,
+          conf: t.conf,
+          div: t.div,
+          exp: t.exp || 0,
+          perm: t.perm || 0,
+          saldo: t.saldo != null ? t.saldo : ((t.int_forced||0)+(t.fumbles_recovered||0)) - ((t.int_thrown||0)+(t.fumbles_lost||0)),
+          flags: t.flags_3rd4th != null ? t.flags_3rd4th : (t.flags || 0),
+          margin: t.margin || 0,
+          wins: t.wins || 0,
+          losses: t.losses || 0,
+          sosRaw: t.sos != null ? t.sos : 50,
+          sample_plays: t.sample_plays || null
+        }));
+        // Substitui base global
+        base.length = 0;
+        mapped.forEach(t => base.push(t));
+        // Atualiza samplePlays se vier no JSON
+        mapped.forEach(t => {
+          if (t.sample_plays && t.sample_plays.length) {
+            samplePlays[t.abbr] = t.sample_plays.map(p => ({
+              clock: p.clock || "--:--",
+              qtr: p.qtr != null ? ("Q" + p.qtr) : "—",
+              down: p.down || "",
+              desc: p.desc || "",
+              yds: p.yards || p.yds || 20
+            }));
+          }
+        });
+        console.log("TAPE32: carregado data/season.json", payload.as_of || "", mapped.length, "times");
+        // Badge de fonte (opcional)
+        const src = payload.source || "season.json";
+        const sel = document.getElementById("period-select");
+        if (sel && sel.parentElement) {
+          let badge = document.getElementById("data-source-badge");
+          if (!badge) {
+            badge = document.createElement("div");
+            badge.id = "data-source-badge";
+            badge.className = "text-[10px] text-tape-muted mt-1";
+            sel.parentElement.appendChild(badge);
+          }
+          badge.textContent = "Fonte: " + src + (payload.as_of ? " · " + payload.as_of : "");
+        }
+      } catch (e) {
+        console.warn("TAPE32: usando dados embutidos (", e.message, ")");
+      }
+      currentData = dataFor(period);
+      renderAll();
+    }
+
+    loadSeasonData();
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(function(e){ console.warn("SW", e); });
+    }
+  </script>
+</body>
+</html>
